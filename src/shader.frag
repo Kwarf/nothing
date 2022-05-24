@@ -11,6 +11,16 @@ layout(location = 0) out vec4 fragColor;
 
 #include "glsl/hg_sdf.glsl"
 
+float opUnion(float a, float b) { return min(a, b); }
+float opSubtraction(float a, float b) { return max(-a, b); }
+float opIntersection(float a, float b) { return max(a, b); }
+
+float sdTriPrism(vec3 p, vec2 h)
+{
+	vec3 q = abs(p);
+	return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);
+}
+
 vec3 rgb(int r, int g, int b)
 {
 	return vec3(float(r) / 255., float(g) / 255., float(b) / 255.);
@@ -37,7 +47,7 @@ vec3 position(Hit hit)
 
 #define MAX_STEPS 96
 #define MAX_SHADOW_ITER 24
-#define MAX_DIST 30.
+#define MAX_DIST 100.
 
 FieldResult frMin(FieldResult a, FieldResult b)
 {
@@ -47,10 +57,15 @@ FieldResult frMin(FieldResult a, FieldResult b)
 FieldResult scene(vec3 p)
 {
 	float displace = sin(2*p.x)*sin(2*p.y)*sin(2*p.z)*sin(time);
-	FieldResult sphere = FieldResult(fSphere(p - vec3(0, 0, 10), 3.0) + displace, 1);
-	FieldResult sphere2 = FieldResult(fSphere(p - vec3(5, 0, 10), 3.0) + displace, 10);
+	FieldResult sphere = FieldResult(fSphere(p - vec3(0, 0, 5), 1.0) + displace, 1);
 
-	return frMin(sphere, sphere2);
+	vec3 tp = p - vec3(0, 0, -time * 10.0); pMod1(tp.z, 5);
+	float t = opSubtraction(sdTriPrism(tp, vec2(6, 2))
+		, sdTriPrism(tp, vec2(10, 1))
+	);
+	FieldResult triangle = FieldResult(t, 10);
+
+	return frMin(sphere, triangle);
 }
 
 Hit march(vec3 ro, vec3 rd)
@@ -60,7 +75,7 @@ Hit march(vec3 ro, vec3 rd)
 	for (int i = 0; i < MAX_STEPS; i++)
 	{
 		field = scene(ro + rd * dist);
-		if(abs(field.distance) < .001 || dist>MAX_DIST)
+		if(abs(field.distance) < .001 || dist > MAX_DIST)
 		{
 			break;
 		}
@@ -106,7 +121,7 @@ vec3 getMaterialColor(Hit hit)
 		case 1: // Reflective gold
 			return rgb(255, 223, 0);
 		case 10:
-			return vec3(0.1);
+			return vec3(1, 0, 0);
 		default:
 			return vec3(0);
 	}
@@ -137,7 +152,7 @@ vec3 render(in Hit hit, in vec3 N, in vec3 lp)
 	vec3 color = (getMaterialColor(hit) * (diff + .15) + vec3(1., .6, .2) * spec * 2.) * atten;
 
 	float fog = smoothstep(0., .95, hit.distance / MAX_DIST);
-	return mix(color, vec3(0.01), fog);
+	return mix(color, vec3(0.02), fog);
 }
 
 vec3 getCameraRayDir(vec2 uv, vec3 cameraPosition, vec3 lookAt)
@@ -152,7 +167,7 @@ void main()
 {
 	vec3 lightPosition = vec3(-1, 0, -1);
 	vec3 cameraPosition = vec3(0, 0, -1);
-	vec3 lookAt = vec3(0, 0, 0);
+	vec3 lookAt = vec3(0, 0, 10);
 
 	vec2 uv = (2.0 * (gl_FragCoord.xy / resolution.xy - 0.5)) * vec2(resolution.x / resolution.y, -1.0);
 	vec3 rayDirection = getCameraRayDir(uv, cameraPosition, lookAt);
