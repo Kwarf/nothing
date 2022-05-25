@@ -5,4 +5,20 @@ edition = "2021"
 
 [dependencies]
 bytemuck = { version = "1.9", features = [ "derive" ] }
-usch = { git = "https://github.com/kwarf/usch.git" }
+usch = { git = "https://github.com/kwarf/usch.git", default-features = false, features = [ "ogg" ] }
+
+[build-dependencies]
+bytemuck = { version = "1.9" }
+naga = { version = "0.8", default-features = false, features = [ "spv-in", "wgsl-out" ] }
+shaderc = "0.8"
+
+[features]
+default = ["editor"]
+editor = ["usch/editor", "usch/spirv"]
+
+[profile.release]
+opt-level = "z"
+strip = true
+lto = "fat"
+panic = "abort"
+codegen-units = 1
