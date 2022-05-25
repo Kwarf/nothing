@@ -54,6 +54,11 @@ vec3 position(Hit hit)
 #define MAX_SHADOW_ITER 24
 #define MAX_DIST 100.
 
+float rand(vec2 co)
+{
+	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 FieldResult frMin(FieldResult a, FieldResult b)
 {
 	return a.distance < b.distance ? a : b;
@@ -61,28 +66,133 @@ FieldResult frMin(FieldResult a, FieldResult b)
 
 FieldResult tunnel(in vec3 p)
 {
-	vec3 pa = p - vec3(0, 0, -time * 10.0); pMod1(pa.z, 5);
+	vec3 pa = p - vec3(0, 0, -time * 10.0); pMod1(pa.z, 4);
 	float a = opSubtraction(sdTriPrism(pa, vec2(6, 2))
 		, sdTriPrism(pa, vec2(10, 1))
 	);
 
-	vec3 pb = p - vec3(0, 0, 2.5 + -time * 10.0); pMod1(pb.z, 5);
-	pR(pb.zx, 90.0);
-	float b = opSubtraction(sdTriPrism(pb, vec2(6, 2))
-		, sdTriPrism(pb, vec2(10, 1))
+	vec3 pb = p - vec3(0, 0, 2 + -time * 10.0); pMod1(pb.z, 4);
+	pR(pb.xy, radians(60.0));
+	float b = opSubtraction(sdTriPrism(pb, vec2(10, 2))
+		, sdTriPrism(pb, vec2(14, 0.99))
 	);
 
 	return frMin(FieldResult(a, 10), FieldResult(b, 11));
 }
 
+FieldResult tunnelWonky(in vec3 p)
+{
+	float bt = beat() * 64.0;
+
+	vec3 pa = p - vec3(0, 0, -time * 10.0); pMod1(pa.z, 4);
+	pR(pa.xy, radians(-bt));
+	float a = opSubtraction(sdTriPrism(pa, vec2(10, 2))
+		, sdTriPrism(pa, vec2(12, 1))
+	);
+
+	vec3 pb = p - vec3(0, 0, 2 + -time * 10.0); pMod1(pb.z, 4);
+	pR(pb.xy, radians(60.0 + bt));
+	float b = opSubtraction(sdTriPrism(pb, vec2(10, 2))
+		, sdTriPrism(pb, vec2(12, 0.99))
+	);
+
+	return frMin(FieldResult(a, 10), FieldResult(b, 11));
+}
+
+FieldResult sphere(in vec3 p)
+{
+	float displace = sin(2*p.x)*sin(2*p.y)*sin(2*p.z)*sin(beat()/4.0);
+	return FieldResult(fSphere(p - vec3(0, 0, 5), 0.1 + (0.3 * barHit())) + displace, 1);
+}
+
+FieldResult sphereAngry(in vec3 p)
+{
+	float displace = rand(vec2(time, sin(p.x) / 1000000.0)) * 0.2;
+	return FieldResult(fSphere(p - vec3(0, 0, 5), 2.0 + displace), 1);
+}
+
+FieldResult sphereWorbling(in vec3 p)
+{
+	float displace = rand(vec2(time, sin(p.x) / 1000000.0)) * 0.2;
+	float b = beat();
+	if (b >= 100) { pR(p.xy, radians(-60.0)); }
+	else if (b >= 92) { pR(p.xy, radians(60.0)); }
+	return FieldResult(fSphere(p - vec3(0, 0, 5), 2.0) + (sin(1.0 + (p.y * 2.5) - b * 8.0)) * 0.5, 1);
+}
+
+FieldResult metaballs(in vec3 p)
+{
+	float bt = beat() * 2.0;
+	float st = sin(bt);
+	float ct = cos(bt);
+
+	p.z -= 5.0;
+	pR(p.xy, st);
+	pR(p.xz, ct*0.5);
+	float a = fSphere(p - vec3(st, ct, -ct), 1.0);
+	float b = fSphere(p - vec3(ct, st, -st), 1.0);
+	float c = fSphere(p - vec3(-st, -ct, st), 1.0);
+
+	float r = fOpUnionRound(a, b, 0.6);
+	r = fOpUnionRound(r, c, 0.6);
+
+	return FieldResult(r, 1);
+}
+
 FieldResult scene(vec3 p)
 {
-	float displace = sin(2*p.x)*sin(2*p.y)*sin(2*p.z)*sin(time);
-	FieldResult sphere = FieldResult(fSphere(p - vec3(0, 0, 5), 0.2 + (0.8 * barHit())) + displace, 1);
+	float b = beat();
+	if (b > 144.0)
+	{
+		return tunnel(p);
+	}
 
-	FieldResult tunnel = tunnel(p);
+	FieldResult s;
+	if (b >= 108.0 && b < 112.0
+	 || b >= 116.0 && b < 120.0
+	 || b >= 124.0 && b < 128.0
+	 || b >= 132.0 && b < 136.0
+	 || b >= 140.0
+	 )
+	{
+		s = metaballs(p);
+	}
+	else if (b >= 80.0 && b < 144.0)
+	{
+		if (b >= 84.0 && b < 88.0
+		 || b >= 92.0 && b < 96.0
+		 || b >= 100.0 && b < 104.0
+		 )
+		{
+			s = sphereWorbling(p);
+		}
+		else
+		{
+			s = sphereAngry(p);
+		}
+	}
+	else
+	{
+		s = sphere(p);
+	}
 
-	return frMin(sphere, tunnel);
+	FieldResult t;
+	if (b < 116.0
+	 || b >= 120.0 && b < 124.0
+	 || b >= 128.0 && b < 132.0
+	 || b >= 136.0 && b < 140.0
+	 || b >= 144.0
+	 )
+	{
+		t = tunnel(p);
+	}
+	else
+	{
+		t = tunnelWonky(p);
+	}
+
+
+	return frMin(s, t);
 }
 
 Hit march(vec3 ro, vec3 rd)
@@ -92,11 +202,11 @@ Hit march(vec3 ro, vec3 rd)
 	for (int i = 0; i < MAX_STEPS; i++)
 	{
 		field = scene(ro + rd * dist);
-		if(abs(field.distance) < .001 || dist > MAX_DIST)
+		if(abs(field.distance) < .00001 || dist > MAX_DIST)
 		{
 			break;
 		}
-		dist += field.distance * .75;
+		dist += field.distance * 0.75;
 	}
 	return Hit(ro, rd, dist, field.materialId);
 }
@@ -138,9 +248,9 @@ vec3 getMaterialColor(Hit hit)
 		case 1: // Reflective gold
 			return rgb(255, 223, 0);
 		case 10: // Tunnel color 1
-			return vec3(1, 0, 0);
-		case 12: // Tunnel color 2
-			return vec3(0, 1, 0);
+			return vec3(0.03);
+		case 11: // Tunnel color 2
+			return vec3(1.0, 0.0, 0.0);
 		default:
 			return vec3(0);
 	}
@@ -151,6 +261,10 @@ bool isMaterialReflective(int materialId)
 	switch (materialId)
 	{
 		case 1:
+			return true;
+		case 10:
+			return true;
+		case 11:
 			return true;
 		default:
 			return false;
@@ -184,9 +298,15 @@ vec3 getCameraRayDir(vec2 uv, vec3 cameraPosition, vec3 lookAt)
 
 void main()
 {
+	float b = beat();
 	vec3 lightPosition = vec3(-1, 0, -1);
 	vec3 cameraPosition = vec3(0, 0, -1);
-	vec3 lookAt = vec3(0, 0, 10);
+	if (b < 80.0)
+	{
+		// cameraPosition = vec3(sin((b + 1.7) / 2.0) * 2.0, 0, sin(b / 4.0) * 5.0);
+		cameraPosition = vec3(sin((b - 4.6) / 4.0) * 2.0, 0, -1 + sin(b / 8.0) * 10.0);
+	}
+	vec3 lookAt = vec3(0, 0, 5);
 
 	vec2 uv = (2.0 * (gl_FragCoord.xy / resolution.xy - 0.5)) * vec2(resolution.x / resolution.y, -1.0);
 	vec3 rayDirection = getCameraRayDir(uv, cameraPosition, lookAt);
@@ -197,7 +317,7 @@ void main()
 	vec3 pOutside = position(hit) + N * .0015;
 	float shadow = calcShadow(pOutside, lightPosition, 16.);
 
-	if (isMaterialReflective(hit.materialId))
+	if (isMaterialReflective(hit.materialId) && hit.distance < 30.0)
 	{
 		hit = march(pOutside, reflect(rayDirection, N));
 		N = calcNormal(position(hit));
@@ -206,4 +326,6 @@ void main()
 
 	color *= shadow;
 	fragColor = vec4(clamp(color, 0., 1.), 1);
+	if (b < 4.0) { fragColor = mix(vec4(0), fragColor, (b / 4.0) * 0.2); }
+	if (b > 144.0) { fragColor = mix(fragColor, vec4(0), ((b - 144.0) / 8.0)); }
 }
