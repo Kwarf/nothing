@@ -11,6 +11,11 @@ layout(location = 0) out vec4 fragColor;
 
 #include "glsl/hg_sdf.glsl"
 
+const float BPM = 174.0;
+float beat() { return time / (60.0 / BPM); }
+float barHit() { float i; return 1.0 - modf(beat() / 4.0, i); }
+float beatHit() { float i; return 1.0 - modf(beat(), i); }
+
 float opUnion(float a, float b) { return min(a, b); }
 float opSubtraction(float a, float b) { return max(-a, b); }
 float opIntersection(float a, float b) { return max(a, b); }
@@ -54,18 +59,30 @@ FieldResult frMin(FieldResult a, FieldResult b)
 	return a.distance < b.distance ? a : b;
 }
 
+FieldResult tunnel(in vec3 p)
+{
+	vec3 pa = p - vec3(0, 0, -time * 10.0); pMod1(pa.z, 5);
+	float a = opSubtraction(sdTriPrism(pa, vec2(6, 2))
+		, sdTriPrism(pa, vec2(10, 1))
+	);
+
+	vec3 pb = p - vec3(0, 0, 2.5 + -time * 10.0); pMod1(pb.z, 5);
+	pR(pb.zx, 90.0);
+	float b = opSubtraction(sdTriPrism(pb, vec2(6, 2))
+		, sdTriPrism(pb, vec2(10, 1))
+	);
+
+	return frMin(FieldResult(a, 10), FieldResult(b, 11));
+}
+
 FieldResult scene(vec3 p)
 {
 	float displace = sin(2*p.x)*sin(2*p.y)*sin(2*p.z)*sin(time);
-	FieldResult sphere = FieldResult(fSphere(p - vec3(0, 0, 5), 1.0) + displace, 1);
+	FieldResult sphere = FieldResult(fSphere(p - vec3(0, 0, 5), 0.2 + (0.8 * barHit())) + displace, 1);
 
-	vec3 tp = p - vec3(0, 0, -time * 10.0); pMod1(tp.z, 5);
-	float t = opSubtraction(sdTriPrism(tp, vec2(6, 2))
-		, sdTriPrism(tp, vec2(10, 1))
-	);
-	FieldResult triangle = FieldResult(t, 10);
+	FieldResult tunnel = tunnel(p);
 
-	return frMin(sphere, triangle);
+	return frMin(sphere, tunnel);
 }
 
 Hit march(vec3 ro, vec3 rd)
@@ -120,8 +137,10 @@ vec3 getMaterialColor(Hit hit)
 	{
 		case 1: // Reflective gold
 			return rgb(255, 223, 0);
-		case 10:
+		case 10: // Tunnel color 1
 			return vec3(1, 0, 0);
+		case 12: // Tunnel color 2
+			return vec3(0, 1, 0);
 		default:
 			return vec3(0);
 	}
