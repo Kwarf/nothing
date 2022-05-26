@@ -9,7 +9,8 @@ struct Uniforms {
     time: f32,
 }
 
-static RESOLUTION: (u32, u32) = (1280, 720);
+static RESOLUTION: (u32, u32) = (1920, 1080);
+static TITLE: &str = "Nothing";
 
 fn main() {
     #[cfg(feature = "editor")]
@@ -19,9 +20,9 @@ fn main() {
     );
 
     #[cfg(feature = "editor")]
-    DemoBuilder::new(RESOLUTION, "Birdie 2022")
+    DemoBuilder::new(RESOLUTION, false, TITLE)
         .with_tracker(tracker)
-        // .with_ogg_music(include_bytes!("music.ogg"), Some(743006))
+        .with_ogg_music(include_bytes!("music.ogg"), Some(5450690))
         .scene(|builder| {
             builder
                 .with_uniforms(|time| {
@@ -40,8 +41,8 @@ fn main() {
         .run();
 
     #[cfg(not(feature = "editor"))]
-    DemoBuilder::new(RESOLUTION, "Birdie 2022")
-        // .with_ogg_music(include_bytes!("music.ogg"), Some(743006))
+    DemoBuilder::new(RESOLUTION, true, TITLE)
+        .with_ogg_music(include_bytes!("music.ogg"), Some(5450690))
         .scene(|builder| {
             builder
                 .with_uniforms(|time| {

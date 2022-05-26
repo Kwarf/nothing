@@ -98,16 +98,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "birdie2022"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "naga",
- "shaderc",
- "usch",
-]
-
-[[package]]
 name = "bit-set"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1275,6 +1265,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nothing"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "naga",
+ "shaderc",
+ "usch",
+]
+
+[[package]]
 name = "notify"
 version = "4.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1790,7 +1790,7 @@ checksum = "3ed742d4ea2bd1176e236172c8429aaf54486e7ac098db29ffe6529e0ce50973"
 [[package]]
 name = "usch"
 version = "0.1.0"
-source = "git+https://github.com/kwarf/usch.git#72ef8103bb853e9791a4675e2c2b72c8807d5fe2"
+source = "git+https://github.com/kwarf/usch.git#88f96ba3c134fd29e64f3e899f487eea86bb25be"
 dependencies = [
  "bytemuck",
  "cpal",
